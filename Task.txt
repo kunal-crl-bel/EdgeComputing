@@ -1,0 +1,10 @@
+in my scenario, i need to track using yolov8l, and has to report if new object detected, 
+problem is when i am using the yolov8l model, and i report using there output my message frequency is too high , as my custom trained model is not much accurate and it leaves sometime in same video, and again when detected a new message is got generate, so to solve this issue, i am thinking if i can do something else, 
+
+so i though of a new plan, when i will detect a new object, (use the tracking method of yolo with byte tracker), and when got new object(with new ID), then crop the object part only from the image, and check in the already sent image data, i mean i will check the similarity of sent image, like if they differ from each other, then i will send the new summary , otherwise i will just ignore, and also i will add the new croped image into that DB, but as you can see that the size of DB can be increasing , so you need to handle that also, and also as i have GPU, so utilise that + do some sort of parallelisation + my code should be complete modular, 
+
+and also as in JS, when we call the updateState() or other hooks, it works like , if i call the updateState into a for loop, then it will update only once(i.e the last update.), so i also want to add such kind of behaviour in my code, so that if similarity match is performed, and i need to send the new report summary, and the summary is getting updated very frequently, then i will send the all comuulative summary at the end(when the new summary is cooled down)
+
+
+NOTE:
+The complete code must be very statndard and Modular + use config.xml for any such variable that my be depend on user, (like the thresold values and other stuffs, (the video source, model and other paths.))
