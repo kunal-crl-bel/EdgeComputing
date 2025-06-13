@@ -35,11 +35,13 @@ def main() -> None:
             if not ret:
                 break
             frame_idx += 1
-
+            
+            print(f"Processing frame {frame_idx}")            
             # detect + track
             tracks = model.track(
                 source=frame,
                 device=device,
+                imgsz=640,
                 conf=float(cfg['detect_confidence']),
                 tracker="bytetrack.yaml",
                 verbose=False,
