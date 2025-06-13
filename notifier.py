@@ -58,7 +58,12 @@ class Notifier:
         tmp_map = dict()
         for i in entries:
             tmp_map[i[0]] = i[1]
-            
+        if tmp_map.get(0,None):
+            tmp_map[0]=None
+        
+        if not tmp_map:
+            return 
+        
         msg = self._create_detected_object_message(tmp_map)
         self.sock.sendto(msg, self.dst)
         # print(f"[Notifier] Sent msg_id={self.msg_id}, entries={list(map(lambda x: f"{x}:{tmp_map[x]}", tmp_map))}")
