@@ -8,7 +8,7 @@ class SimilarityChecker:
     def __init__(self, db_manager: DBManager, threshold: float):
         self.db = db_manager
         self.threshold = threshold
-        self.mosaic_dir = Path("mosaic_results")
+        self.mosaic_dir = Path("images/mosaic_results")
         self.mosaic_dir.mkdir(exist_ok=True)
 
     def is_new(self, crop_img: Image.Image) -> tuple[bool, str | None]:
@@ -66,6 +66,9 @@ class SimilarityChecker:
         draw.text((10, 230), f"New Hash: {hash1}", fill="white", font=font)
         if hash2:
             draw.text((10, 245), f"Compared Hash: {hash2} (diff={diff})", fill="white", font=font)
+        else:
+            draw.text((10, 245), f"Difference={diff})", fill="white", font=font)
+            
         draw.text((260, 230), f"Status: {status}", fill="white", font=font)
         draw.text((260, 245), f"Compared: {compared_file}", fill="white", font=font)
 

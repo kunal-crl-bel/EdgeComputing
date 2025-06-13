@@ -15,7 +15,6 @@ def main() -> None:
     cfg = load_config("config.xml")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # make sure this directory exists in your config.xml
     saved_dir = cfg.get('saved_frame_dir', 'saved_frames')
     os.makedirs(saved_dir, exist_ok=True)
 

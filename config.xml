@@ -2,12 +2,13 @@
     <video_source>/home/kunal/Videos/04 PT 4733.avi</video_source>
     <model_path>/home/kunal/Projects/BSS/TrainedModels/10AprilColor/best.pt</model_path>
     <detect_confidence>0.5</detect_confidence>
-    <db_dir>./crop_db</db_dir>
+    <db_dir>./images/crop_db</db_dir>
     <max_db_size_mb>500</max_db_size_mb>
     <similarity_threshold>10</similarity_threshold>
     <cooldown_seconds>5</cooldown_seconds>
     <parallel_workers>4</parallel_workers>
 
+    <saved_frame_dir>./images/saved_frames</saved_frame_dir>
     <udp_ip>192.168.1.100</udp_ip>
     <udp_port>5100</udp_port>
     <src_csci_id>1</src_csci_id>
