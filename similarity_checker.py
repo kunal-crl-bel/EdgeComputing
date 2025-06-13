@@ -13,36 +13,22 @@ class SimilarityChecker:
 
     def is_new(self, crop_img: Image.Image) -> tuple[bool, str | None]:
         hash_val = imagehash.phash(crop_img)
-        best_match = None
         min_diff = float("inf")
 
-        for file in self.db.db_dir.glob("*.jpg"):
+        for item in self.db.hash_value_map:
             try:
-                existing = Image.open(file)
-                existing_hash = imagehash.phash(existing) 
-                """
-                instead of calculating the hash again, hash 
-                can be stored into some kind of map,
-                or other better data structure like array, 
-                so that we don't need to calculate for the,
-                existing file again and again, and also,
-                if we can utilize the GPU or other multithreading, 
-                which can increase the speed
-                (as python GIL create problem with CPU bond task)
-                """
-                diff = hash_val - existing_hash 
+                diff = hash_val - self.db.hash_value_map[item] 
                 """do we need to calculate the abs difference?"""
                 if diff < min_diff:
                     min_diff = diff
-                    best_match = (existing.copy(), file.name)
                 if diff < self.threshold:
-                    self._save_mosaic(crop_img, best_match[0], file.name, hash_val, existing_hash, diff, match=True)
                     return False, None
             except Exception as e:
-                print(f"Error comparing with {file.name}: {e}")
+                print(f"Error comparing with {item}: {e}")
                 continue
 
-        self._save_mosaic(crop_img, best_match[0] if best_match else None, best_match[1] if best_match else "", hash_val, None, min_diff, match=False)
+        self.db.hash_value_map[str(hash_val)] = hash_val
+        
         return True, str(hash_val)
 
     def _save_mosaic(self, img1: Image.Image, img2: Image.Image | None, compared_file: str, hash1, hash2, diff, match: bool):

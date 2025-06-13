@@ -4,9 +4,14 @@
     <detect_confidence>0.5</detect_confidence>
     <db_dir>./images/crop_db</db_dir>
     <max_db_size_mb>500</max_db_size_mb>
-    <similarity_threshold>10</similarity_threshold>
+    <similarity_threshold>40</similarity_threshold>
     <cooldown_seconds>5</cooldown_seconds>
-    <parallel_workers>4</parallel_workers>
+
+    <parallel_workers_similarity>4</parallel_workers_similarity>
+    <parallel_workers_io>4</parallel_workers_io>
+    <parallel_workers_udp_msg>4</parallel_workers_udp_msg>
+
+    <prefetch_input_stream_frame>5</prefetch_input_stream_frame>
 
     <saved_frame_dir>./images/saved_frames</saved_frame_dir>
     <udp_ip>192.168.1.100</udp_ip>
@@ -15,5 +20,13 @@
     <dest_csci_id>2</dest_csci_id>
     <src_unit_id>1</src_unit_id>
     <dest_unit_id>1</dest_unit_id>
+    <msg_id>3</msg_id>
+
+
+    <srs_values_of_classes>
+        <PERSON>10</PERSON>
+        <VEHICLE>12</VEHICLE>
+    </srs_values_of_classes>
+
 </config>
 
