@@ -12,7 +12,13 @@ from similarity_checker import SimilarityChecker
 from notifier import Notifier
 from VideoStream import VideoStream
 
+
+prev_tacked_map = dict()
+
 def main() -> None:
+    global prev_tacked_map
+    
+    
     print("Started")
     cfg = load_config("config.xml")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -89,7 +95,7 @@ def main() -> None:
                 if crop.size == 0:
                     continue
                 pil_img = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
-                fut = sim_executor.submit(sim.is_new, pil_img)
+                fut = sim_executor.submit(sim.is_new, pil_img, tid)
                 fut.track_id = tid
                 fut.img = pil_img
                 fut.class_id = int(box.cls)  # for SRS lookup
@@ -98,12 +104,22 @@ def main() -> None:
             # Task 3: handle new events
             counter_map = {}
             for fut in as_completed(futures):
-                is_new, hashValue = fut.result()
-                if not is_new:
+                is_new, hashValue, id = fut.result()
+                
+                if id in prev_tacked_map:
+                    print("id is : ",id)
+                    continue  # Skip if already processed
+                else:
+                    print("id not is : ",id)
+                prev_tacked_map[id] = True  # Mark this ID as processed
+                    
+                if not is_new :
+                    print(f"  → Track {fut.track_id} is not new, skipping")
                     continue
-
+                
+                
                 # Lookup SRS for detected class and count
-                srs_val = cfg['srs_values_of_classes'].get(model.names[fut.class_id], 0)
+                srs_val = cfg['srs_values_of_classes'].get(model.names.get(fut.class_id,None), 0)
                 if counter_map.get(srs_val,None):
                     counter_map[srs_val] += counter_map.get(srs_val, 1)
                 else:
@@ -112,8 +128,8 @@ def main() -> None:
                 
                 # Log image crop + hashValue
                 db.add_image(fut.img, hashValue)
-                
-                
+        
+                    
             for id in counter_map:
                 notifier.add(id,counter_map[id])
                 

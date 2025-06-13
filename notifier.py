@@ -55,9 +55,15 @@ class Notifier:
         self.executor.submit(self._send, entries_to_send)
 
     def _send(self, entries: list[tuple[int, int]]) -> None:
-        msg = self._create_detected_object_message(entries)
+        tmp_map = dict()
+        for i in entries:
+            tmp_map[i[0]] = i[1]
+            
+        msg = self._create_detected_object_message(tmp_map)
         self.sock.sendto(msg, self.dst)
-        print(f"[Notifier] Sent msg_id={self.msg_id}, entries={entries}")
+        # print(f"[Notifier] Sent msg_id={self.msg_id}, entries={list(map(lambda x: f"{x}:{tmp_map[x]}", tmp_map))}")
+        del tmp_map
+
         self.msg_id = (self.msg_id + 1) & 0xFF
 
     def _create_message_header(self, msg_len: int) -> bytes:
@@ -74,10 +80,10 @@ class Notifier:
     def _create_object_data_entry(self, object_type_code: int, count: int) -> bytes:
         return struct.pack('<BB', object_type_code, count)
 
-    def _create_detected_object_message(self, entries: list[tuple[int, int]]) -> bytes:
-        # entries: list of (code, count)
+    def _create_detected_object_message(self, entries: dict[tuple[int, int]]) -> bytes:
+        # entries: dict of (code, count)
         payload = struct.pack('<B', len(entries))
-        for code, cnt in entries:
+        for (code, cnt) in entries.items():
             payload += self._create_object_data_entry(code, cnt)
         
         header = self._create_message_header(len(payload))
