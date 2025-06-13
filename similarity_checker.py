@@ -19,8 +19,19 @@ class SimilarityChecker:
         for file in self.db.db_dir.glob("*.jpg"):
             try:
                 existing = Image.open(file)
-                existing_hash = imagehash.phash(existing)
-                diff = hash_val - existing_hash
+                existing_hash = imagehash.phash(existing) 
+                """
+                instead of calculating the hash again, hash 
+                can be stored into some kind of map,
+                or other better data structure like array, 
+                so that we don't need to calculate for the,
+                existing file again and again, and also,
+                if we can utilize the GPU or other multithreading, 
+                which can increase the speed
+                (as python GIL create problem with CPU bond task)
+                """
+                diff = hash_val - existing_hash 
+                """do we need to calculate the abs difference?"""
                 if diff < min_diff:
                     min_diff = diff
                     best_match = (existing.copy(), file.name)

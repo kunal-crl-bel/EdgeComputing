@@ -14,9 +14,15 @@ class DBManager:
         self._cleanup()
 
     def _current_size(self) -> int:
+        """  
+            need optimization here, why checking the size again and again,
+            use some variable to calculate the size and then just update 
+            based on the value of variable, summing again and again is time consuming.
+        """
         return sum(f.stat().st_size for f in self.db_dir.glob("*.jpg"))
 
     def _cleanup(self) -> None:
-        files = sorted(self.db_dir.glob("*.jpg"), key=lambda x: x.stat().st_mtime)
+        files = sorted(self.db_dir.glob("*.jpg"),
+                       key=lambda x: x.stat().st_mtime)
         while self._current_size() > self.max_size and files:
             files.pop(0).unlink()

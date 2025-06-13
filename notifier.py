@@ -25,7 +25,7 @@ class Notifier:
         self._try_send()
 
     def _try_send(self) -> None:
-        if time.time() - self.last_sent >= self.cooldown and self.pending:
+        if (time.time() - self.last_sent) >= self.cooldown and self.pending:
             self._send()
             self.pending.clear()
             self.last_sent = time.time()

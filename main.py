@@ -66,6 +66,11 @@ def main() -> None:
 
                 # 1) Notify + DB as before
                 notifier.add(fut.track_id)
+                """
+                I have some SRS values of corresponding class, 
+                that i detected, so in my message i need to send,
+                that SRC value for object and the count.
+                """
                 db.add_image(fut.img, hist)
 
                 # 2) SAVE THE FULL FRAME
