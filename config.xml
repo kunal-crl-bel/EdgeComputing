@@ -1,7 +1,7 @@
 <config>
-    <video_source>/home/kunal/Videos/04 PT 4733.avi</video_source>
+    <video_source>./test.mp4</video_source>
 
-    <model_path>/home/kunal/Projects/BSS/TrainedModels/10AprilColor/best.pt</model_path>
+    <model_path>yolov8l.pt</model_path>
     
     <detect_confidence>0.5</detect_confidence>
     
