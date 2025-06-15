@@ -11,7 +11,7 @@ class SimilarityChecker:
         self.mosaic_dir = Path("images/mosaic_results")
         self.mosaic_dir.mkdir(exist_ok=True)
 
-    def is_new(self, crop_img: Image.Image,id: int) -> tuple[bool, str | None]:
+    def is_new(self, crop_img: Image.Image) -> tuple[bool, str | None]:
         hash_val = imagehash.phash(crop_img)
         min_diff = float("inf")
 
@@ -23,7 +23,7 @@ class SimilarityChecker:
                 if diff < min_diff:
                     min_diff = diff
                 if diff < self.threshold:
-                    return False, None, id
+                    return False, None
             except Exception as e:
                 print(f"Error comparing with {item}: {e}")
                 continue
@@ -31,7 +31,7 @@ class SimilarityChecker:
         
         self.db.hash_value_map[str(hash_val)] = hash_val
         
-        return True, str(hash_val), id
+        return True, str(hash_val)
 
     def _save_mosaic(self, img1: Image.Image, img2: Image.Image | None, compared_file: str, hash1, hash2, diff, match: bool):
         # Resize both images to same size for display
