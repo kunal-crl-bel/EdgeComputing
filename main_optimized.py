@@ -89,7 +89,8 @@ def detection_worker(cfg, model, stream, detection_queue, device):
                 continue
 
             crop = frame[y1:y2, x1:x2]
-            detection_queue.put((tid, crop, class_id))
+            detection_queue.put(
+                (tid, crop, class_id, frame.copy(), (x1, y1, x2, y2)))
             last_seen[tid] = time.time()
 
 
@@ -105,10 +106,12 @@ def similarity_worker(cfg, detection_queue, notify_queue, sim_checker):
     print("[Similarity] Started")
     while True:
         try:
-            tid, crop, class_id = detection_queue.get(timeout=1)
+            tid, crop, class_id, frame, bbox = detection_queue.get(timeout=1)
             is_new, hash_value = sim_checker.is_new(Image.fromarray(crop))
             if is_new:
-                notify_queue.put((tid, hash_value, crop, class_id))
+                notify_queue.put(
+                    (tid, hash_value, crop, class_id, frame, bbox))
+                # notify_queue.put((tid, hash_value, crop, class_id))
         except queue.Empty:
             continue
 
@@ -124,13 +127,28 @@ def notifier_worker(cfg, notify_queue, db, notifier):
     """
     print("[Notifier] Started")
     global reported_ids
+    saved_dir = cfg.get('saved_frame_dir', 'saved_frames')
+    os.makedirs(saved_dir, exist_ok=True)
+
+
     while True:
         try:
-            tid, hash_value, crop, class_id = notify_queue.get(timeout=1)
+            tid, hash_value, crop, class_id, frame, bbox = notify_queue.get(timeout=1)
             db.add_image(Image.fromarray(crop), id_hash=hash_value)
             srs_code = get_srs_code(class_id)
             notifier.add(srs_code, 1)
             reported_ids.add(tid)
+
+            # Annotate and save frame
+            x1, y1, x2, y2 = bbox
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(frame, f"SRS:{srs_code}", (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+            filename = os.path.join(
+                saved_dir, f"frame_tid_{tid}_srs_{srs_code}.jpg")
+            cv2.imwrite(filename, frame)
+            print(f"[Notifier] New object {tid} with SRS {srs_code} saved to {filename}")
         except queue.Empty:
             continue
 
