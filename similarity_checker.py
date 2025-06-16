@@ -13,16 +13,14 @@ class SimilarityChecker:
 
     def is_new(self, crop_img: Image.Image) -> tuple[bool, str | None]:
         hash_val = imagehash.phash(crop_img)
-        min_diff = float("inf")
 
         temp_map = self.db.hash_value_map.copy()  # Avoid modifying while iterating
         for item in temp_map:
             try:
                 diff = hash_val - self.db.hash_value_map[item] 
                 """do we need to calculate the abs difference?"""
-                if diff < min_diff:
-                    min_diff = diff
                 if diff < self.threshold:
+                    del temp_map
                     return False, None
             except Exception as e:
                 print(f"Error comparing with {item}: {e}")

@@ -17,6 +17,7 @@ from VideoStream import VideoStream
 # Global sets for tracking reported IDs and their timestamps
 reported_ids = set()
 last_seen = dict()
+frame_map = dict()
 
 # This mapping will be loaded from config based on model.names
 CLASS_ID_TO_SRS = {}
@@ -69,6 +70,9 @@ def detection_worker(cfg, model, stream, detection_queue, device):
         device (str): 'cuda' or 'cpu'.
     """
     print("[Detection] Started")
+    frame_id = 0
+    global frame_map
+    
     while stream.more():
         frame = stream.read()
         if frame is None:
@@ -82,6 +86,9 @@ def detection_worker(cfg, model, stream, detection_queue, device):
                                   tracker="bytetrack.yaml",
                                   verbose=False)[0]
 
+        annotated_frame = results.plot()
+        frame_map[frame_id] = annotated_frame
+        
         for box in results.boxes:
             tid = int(box.id)
             class_id = int(box.cls)
@@ -97,8 +104,10 @@ def detection_worker(cfg, model, stream, detection_queue, device):
 
             crop = frame[y1:y2, x1:x2]
             detection_queue.put(
-                (tid, crop, class_id, frame.copy(), (x1, y1, x2, y2)))
+                (tid, crop, class_id, frame_id))             
             last_seen[tid] = time.time()
+        
+        frame_id += 1
 
 
 def similarity_worker(cfg, detection_queue, notify_queue, sim_checker):
@@ -113,13 +122,18 @@ def similarity_worker(cfg, detection_queue, notify_queue, sim_checker):
     print("[Similarity] Started")
     while True:
         try:
-            tid, crop, class_id, frame, bbox = detection_queue.get(timeout=1)
-            is_new, hash_value, _ = sim_checker.is_new(Image.fromarray(crop),0)
+            tid, crop, class_id, frame_id = detection_queue.get(timeout=1)
+            is_new, hash_value = sim_checker.is_new(Image.fromarray(crop))
             if is_new:
-                notify_queue.put(
-                    (tid, hash_value, crop, class_id, frame, bbox))
-                # notify_queue.put((tid, hash_value, crop, class_id))
+                notify_queue.put((
+                        tid, 
+                        hash_value, 
+                        crop, 
+                        class_id, 
+                        frame_id, 
+                    ))
         except queue.Empty:
+            time.sleep(0.1)  # Avoid busy waiting
             continue
 
 
@@ -140,23 +154,17 @@ def notifier_worker(cfg, notify_queue, db, notifier):
 
     while True:
         try:
-            tid, hash_value, crop, class_id, frame, bbox = notify_queue.get(timeout=1)
+            tid, hash_value, crop, class_id, frame_id = notify_queue.get(timeout=1)
             db.add_image(Image.fromarray(crop), id_hash=hash_value)
             srs_code = get_srs_code(class_id)
             notifier.add(srs_code, 1)
             reported_ids.add(tid)
 
-            # Annotate and save frame
-            x1, y1, x2, y2 = bbox
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(frame, f"SRS:{srs_code}", (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-
-            filename = os.path.join(
-                saved_dir, f"frame_tid_{tid}_srs_{srs_code}.jpg")
-            cv2.imwrite(filename, frame)
+            filename = os.path.join(saved_dir, f"frame_{frame_id}.jpg")
+            cv2.imwrite(filename, frame_map[frame_id])
             print(f"[Notifier] New object {tid} with SRS {srs_code} saved to {filename}")
         except queue.Empty:
+            time.sleep(0.1)  # Avoid busy waiting
             continue
 
 

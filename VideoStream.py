@@ -29,7 +29,7 @@ class VideoStream:
 
     def _worker(self):
         try:
-            cap = cv2.VideoCapture(self.src, cv2.CAP_FFMPEG)
+            cap = cv2.VideoCapture(0)
             if not cap.isOpened():
                 raise RuntimeError(f"Cannot open video source: {self.src}")
             logging.info(f"Opened video source {self.src}")
