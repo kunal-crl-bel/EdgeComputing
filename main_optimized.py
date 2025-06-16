@@ -78,40 +78,52 @@ def detection_worker(cfg, model, stream, detection_queue, device):
         if frame is None:
             continue
 
-        with torch.amp.autocast('cuda', enabled=True):
-            results = model.track(source=frame,
-                                  stream=True, # to tell ultralytics that i want to use same tracker.
-                                  device=device,
-                                  imgsz=640,
-                                  conf=float(cfg['detect_confidence']),
-                                  tracker="bytetrack.yaml",
-                                  verbose=False)
-            
-            print(results)
-            exit(0)
+        # Run inference + tracking (results is a generator when stream=True)
+        with torch.amp.autocast('cuda',enabled=True):
+            results_gen = model.track(
+                source=frame,
+                stream=True,
+                device=device,
+                imgsz=int(cfg.get('imgsz', 640)),
+                conf=float(cfg.get('detect_confidence', 0.25)),
+                tracker=cfg.get('tracker_config', 'bytetrack.yaml'),
+                verbose=False,
+            )
 
-        annotated_frame = results.plot()
-        frame_map[frame_id] = annotated_frame
-        
-        for box in results.boxes:
-            tid = int(box.id)
-            class_id = int(box.cls)
+        # Iterate generator (usually yields one result per frame)
+        for res in results_gen:
+            # Annotate and store frame
+            annotated_frame = res.plot()
+            frame_map[frame_id] = annotated_frame
 
-            if tid in reported_ids:
-                continue
+            # Process detections
+            h, w = frame.shape[:2]
+            for box in res.boxes:
+                tid = int(getattr(box, 'id', -1))
+                class_id = int(getattr(box, 'cls', -1))
 
-            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-            h, w, _ = frame.shape
-            x1, y1, x2, y2 = max(0, x1), max(0, y1), min(w, x2), min(h, y2)
-            if x2 - x1 < 5 or y2 - y1 < 5:
-                continue
+                # Skip if already reported
+                if tid in reported_ids:
+                    continue
 
-            crop = frame[y1:y2, x1:x2]
-            detection_queue.put(
-                (tid, crop, class_id, frame_id))             
-            last_seen[tid] = time.time()
-        
+                # Extract and clamp bounding box
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                x1, y1 = max(0, x1), max(0, y1)
+                x2, y2 = min(w, x2), min(h, y2)
+
+                # Ignore tiny boxes
+                if x2 - x1 < 5 or y2 - y1 < 5:
+                    continue
+
+                # Crop and enqueue
+                crop = frame[y1:y2, x1:x2]
+                detection_queue.put((tid, crop, class_id, frame_id))
+                last_seen[tid] = time.time()
+
         frame_id += 1
+
+    print("[Detection] Finished")
+
 
 
 def similarity_worker(cfg, detection_queue, notify_queue, sim_checker):
