@@ -80,11 +80,15 @@ def detection_worker(cfg, model, stream, detection_queue, device):
 
         with torch.amp.autocast('cuda', enabled=True):
             results = model.track(source=frame,
+                                  stream=True, # to tell ultralytics that i want to use same tracker.
                                   device=device,
                                   imgsz=640,
                                   conf=float(cfg['detect_confidence']),
                                   tracker="bytetrack.yaml",
-                                  verbose=False)[0]
+                                  verbose=False)
+            
+            print(results)
+            exit(0)
 
         annotated_frame = results.plot()
         frame_map[frame_id] = annotated_frame
