@@ -28,11 +28,18 @@ def build_class_id_to_srs_map(model, cfg):
     and srs_values_of_classes from config.xml.
     """
     srs_config = cfg.get("srs_values_of_classes", {})
+    srs_config2 = {}
+    for i in srs_config:
+        srs_config2[i.lower()] = srs_config[i]
+        
+    print('SRS config is : ',srs_config)
     mapping = {}
     for idx, name in model.names.items():
-        if name.lower() in srs_config:
+        print(f"Mapping class {idx} ({name}) to SRS code")
+        if name.lower() in srs_config2:
+            print("\n[ Found ] SRS mapping for class:", name,'\n')
             try:
-                mapping[idx] = int(srs_config[name.lower()])
+                mapping[idx] = int(srs_config2[name.lower()])
             except ValueError:
                 mapping[idx] = 0
         else:
@@ -107,7 +114,7 @@ def similarity_worker(cfg, detection_queue, notify_queue, sim_checker):
     while True:
         try:
             tid, crop, class_id, frame, bbox = detection_queue.get(timeout=1)
-            is_new, hash_value = sim_checker.is_new(Image.fromarray(crop))
+            is_new, hash_value, _ = sim_checker.is_new(Image.fromarray(crop),0)
             if is_new:
                 notify_queue.put(
                     (tid, hash_value, crop, class_id, frame, bbox))
