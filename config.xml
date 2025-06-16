@@ -1,6 +1,6 @@
 <config>
-    <video_source>/home/kunal/Videos/04 PT 4733.avi</video_source>
-    <model_path>/home/kunal/Projects/BSS/TrainedModels/10AprilColor/best.pt</model_path>
+    <video_source>/dev/video0</video_source>
+    <model_path>/home/kunal/Projects/BSS/TrainedModels/16_June_Img_sz_832_drone_2cls_clr/best.pt</model_path>
     <detect_confidence>0.5</detect_confidence>
     <db_dir>./images/crop_db</db_dir>
     <max_db_size_mb>500</max_db_size_mb>
