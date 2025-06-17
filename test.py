@@ -1,2 +1,8 @@
-mp = {'PERSON': 10, 'VEHICLE': 12}
+import sys
 
+def ab():
+
+    print(sys.argv)
+
+if __name__ == "__main__":
+    ab()

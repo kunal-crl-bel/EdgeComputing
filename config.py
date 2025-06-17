@@ -40,6 +40,14 @@ def load_config(config_path: str) -> dict:
         'saved_frame_dir': str,
         'udp_ip': str,
         'udp_port': int,
+        
+        'live_stream_dst_ip':str,
+        'live_stream_dst_port':int,
+        'live_stream_bitrate_kbps':int,
+        'live_stream_fps':int,
+        'live_stream_height':int,
+        'live_stream_width':int,
+               
         'src_csci_id': int,
         'dest_csci_id': int,
         'src_unit_id': int,

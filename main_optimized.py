@@ -13,6 +13,8 @@ from db_manager import DBManager
 from similarity_checker import SimilarityChecker
 from notifier import Notifier
 from VideoStream import VideoStream
+import sys
+import warnings
 
 # Global sets for tracking reported IDs and their timestamps
 reported_ids = set()
@@ -82,43 +84,47 @@ def detection_worker(cfg, model, stream, detection_queue, device):
         with torch.amp.autocast('cuda',enabled=True):
             results_gen = model.track(
                 source=frame,
-                stream=True,
+                # stream=True,
                 device=device,
                 imgsz=int(cfg.get('imgsz', 640)),
                 conf=float(cfg.get('detect_confidence', 0.25)),
                 tracker=cfg.get('tracker_config', 'bytetrack.yaml'),
                 verbose=False,
-            )
+            )[0]
 
         # Iterate generator (usually yields one result per frame)
-        for res in results_gen:
+        # for res in results_gen:
             # Annotate and store frame
-            annotated_frame = res.plot()
-            frame_map[frame_id] = annotated_frame
+        res = results_gen
+        annotated_frame = res.plot()
+        frame_map[frame_id] = annotated_frame
 
-            # Process detections
-            h, w = frame.shape[:2]
-            for box in res.boxes:
-                tid = int(getattr(box, 'id', -1))
-                class_id = int(getattr(box, 'cls', -1))
+        # Process detections
+        h, w = frame.shape[:2]
+        for box in res.boxes:
+            tid = int(getattr(box, 'id', -1))
+            class_id = int(getattr(box, 'cls', -1))
+            
+            if class_id not in CLASS_ID_TO_SRS:
+                continue
 
-                # Skip if already reported
-                if tid in reported_ids:
-                    continue
+            # Skip if already reported
+            if tid in reported_ids:
+                continue
 
-                # Extract and clamp bounding box
-                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-                x1, y1 = max(0, x1), max(0, y1)
-                x2, y2 = min(w, x2), min(h, y2)
+            # Extract and clamp bounding box
+            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+            x1, y1 = max(0, x1), max(0, y1)
+            x2, y2 = min(w, x2), min(h, y2)
 
-                # Ignore tiny boxes
-                if x2 - x1 < 5 or y2 - y1 < 5:
-                    continue
+            # Ignore tiny boxes
+            if x2 - x1 < 5 or y2 - y1 < 5:
+                continue
 
-                # Crop and enqueue
-                crop = frame[y1:y2, x1:x2]
-                detection_queue.put((tid, crop, class_id, frame_id))
-                last_seen[tid] = time.time()
+            # Crop and enqueue
+            crop = frame[y1:y2, x1:x2]
+            detection_queue.put((tid, crop, class_id, frame_id))
+            last_seen[tid] = time.time()
 
         frame_id += 1
 
@@ -183,15 +189,38 @@ def notifier_worker(cfg, notify_queue, db, notifier):
             time.sleep(0.1)  # Avoid busy waiting
             continue
 
+# import subprocess
+# cfg = load_config("config.xml")
+
+# width = cfg['live_stream_width']
+# height = cfg['live_stream_height']
+# fps = cfg['live_stream_fps']
+# bitrate_kbps = cfg['live_stream_bitrate_kbps']
+# dst_ip = cfg['live_stream_dst_ip']
+# dst_port = cfg['live_stream_dst_port']
+
+# ffmpeg_cmd = [
+#     "ffmpeg",
+#     "-f", "rawvideo",
+#     "-pixel_format", "rgb24",
+#     "-video_size", f"{width}x{height}",
+#     "-framerate", str(fps),
+#     "-i", "-",                 # stdin
+#     "-c:v", "libx264",
+#     "-preset", "ultrafast",
+#     "-tune", "zerolatency",
+#     "-b:v", f"{bitrate_kbps}k",
+#     "-f", "mpegts",
+#     f"udp://{dst_ip}:{dst_port}"
+# ]
+# proc = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE)
 
 def main():
     """
     System initializer and thread starter. Loads model, config, DB, and kicks off all workers.
     """
-    import warnings
     warnings.filterwarnings(
         "ignore", category=UserWarning, module='torchvision')
-    import sys
     if not sys.warnoptions:
         warnings.simplefilter("ignore")
 
@@ -211,15 +240,19 @@ def main():
 
     print("[Main] Warming up model...")
     dummy = np.zeros((640, 640, 3), dtype=np.uint8)
+    
     with torch.amp.autocast('cuda', enabled=True):
         _ = model.predict(source=dummy, device=device,
                           imgsz=640, conf=0.0, verbose=False)
 
     stream = VideoStream(cfg['video_source'], queue_size=cfg.get(
-        'prefetch_input_stream_frame', 50)).start()
+        'prefetch_input_stream_frame', 50),cfg=cfg).start()
+    
     db = DBManager(cfg['db_dir'], cfg['max_db_size_mb'])
+    
     sim_checker = SimilarityChecker(db, cfg['similarity_threshold'])
-    notifier = Notifier(cfg)
+    
+    notifier = Notifier(cfg, sys.argv[1] if len(sys.argv)>1 else None)
 
     detection_queue = queue.Queue()
     notify_queue = queue.Queue()

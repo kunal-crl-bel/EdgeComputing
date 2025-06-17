@@ -5,7 +5,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 
 class Notifier:
-    def __init__(self, cfg: dict):
+    def __init__(self, cfg: dict,src_unit_id: int = None):
         # Read all parameters from cfg
         self.cooldown = cfg['cooldown_seconds']
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -14,7 +14,7 @@ class Notifier:
         # Header fields from cfg
         self.src_csci_id = cfg['src_csci_id']
         self.dst_csci_id = cfg['dest_csci_id']
-        self.src_unit_id = cfg['src_unit_id']
+        self.src_unit_id = src_unit_id if src_unit_id else cfg['src_unit_id']
         self.dst_unit_id = cfg['dest_unit_id']
 
         # Initial message ID and thread pool size

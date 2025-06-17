@@ -3,6 +3,7 @@ import cv2
 import logging
 import os
 import queue
+from  VideoLiveStream import VideoLiveStream
 
 # before any VideoCapture calls, lock FFmpeg to 1 thread
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "threads;1"
@@ -14,11 +15,13 @@ logging.basicConfig(
 )
 
 class VideoStream:
-    def __init__(self, src, queue_size=5):
+    def __init__(self, src, queue_size=5,cfg=None):
         self.src = src
         self.q = queue.Queue(maxsize=queue_size)
         self.stopped = threading.Event()
         self.thread = None
+        self.live_streamer = VideoLiveStream(cfg)
+        self.live_streamer.start_live_stream()
 
     def start(self):
         if self.thread is None:
@@ -29,7 +32,7 @@ class VideoStream:
 
     def _worker(self):
         try:
-            cap = cv2.VideoCapture(self.src)
+            cap = cv2.VideoCapture(0)
             # cap = cv2.VideoCapture(self.src, cv2.CAP_FFMPEG)
             if not cap.isOpened():
                 raise RuntimeError(f"Cannot open video source: {self.src}")
@@ -50,6 +53,7 @@ class VideoStream:
                 while not self.stopped.is_set():
                     try:
                         self.q.put(frame, timeout=0.1)
+                        self.live_streamer.write(frame)
                         break
                     except queue.Full:
                         continue

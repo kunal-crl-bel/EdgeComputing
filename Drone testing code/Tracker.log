@@ -201,3 +201,12 @@
 2025-06-16T14:58:04 [INFO] Entry detected: id=1 class=VEHICLE timestamp=2025-06-16T14:58:04.258
 2025-06-16T15:00:24 [INFO] Entry detected: id=1 class=VEHICLE timestamp=2025-06-16T15:00:24.921
 2025-06-16T15:01:28 [INFO] Entry detected: id=1 class=PERSON timestamp=2025-06-16T15:01:28.680
+2025-06-17T11:24:56 [INFO] Entry detected: id=1 class=PERSON timestamp=2025-06-17T11:24:56.737
+2025-06-17T11:24:57 [INFO] Entry detected: id=2 class=VEHICLE timestamp=2025-06-17T11:24:57.202
+2025-06-17T11:25:04 [INFO] Entry detected: id=3 class=VEHICLE timestamp=2025-06-17T11:25:04.345
+2025-06-17T11:27:03 [INFO] Entry detected: id=1 class=PERSON timestamp=2025-06-17T11:27:03.308
+2025-06-17T11:27:03 [INFO] Entry detected: id=2 class=PERSON timestamp=2025-06-17T11:27:03.308
+2025-06-17T11:27:03 [INFO] Entry detected: id=3 class=PERSON timestamp=2025-06-17T11:27:03.308
+2025-06-17T11:27:09 [INFO] Entry detected: id=7 class=PERSON timestamp=2025-06-17T11:27:09.606
+2025-06-17T11:27:13 [INFO] Entry detected: id=9 class=PERSON timestamp=2025-06-17T11:27:13.316
+2025-06-17T11:27:15 [INFO] Entry detected: id=10 class=PERSON timestamp=2025-06-17T11:27:15.848

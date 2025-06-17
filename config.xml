@@ -1,10 +1,14 @@
 <config>
+    <!-- For video Input -->
     <video_source>/dev/video0</video_source>
 
-    <model_path>/home/kunal/Projects/BSS/TrainedModels/16_June_Img_sz_832_drone_2cls_clr/yolov8x.pt</model_path>
+    <!-- Model Path -->
+    <model_path>/home/kunal/Projects/BSS/TrainedModels/03June2025/best.pt</model_path>
 
+    <!-- Detection Threshould -->
     <detect_confidence>0.5</detect_confidence>
 
+    <!-- Image Similarity -->
     <db_dir>./images/crop_db</db_dir>
     <max_db_size_mb>500</max_db_size_mb>
 
@@ -17,17 +21,29 @@
 
     <prefetch_input_stream_frame>5</prefetch_input_stream_frame>
 
+    <!-- Frame Output dir -->
     <saved_frame_dir>./images/saved_frames</saved_frame_dir>
 
-    <udp_ip>192.168.1.100</udp_ip>
+    <!-- Host info for UDP packet. -->
+    <udp_ip>127.0.0.1</udp_ip>
     <udp_port>5100</udp_port>
 
-    <src_csci_id>1</src_csci_id>
-    <dest_csci_id>2</dest_csci_id>
-    <src_unit_id>1</src_unit_id>
-    <dest_unit_id>1</dest_unit_id>
+    <!-- For Live stream  -->
+    <live_stream_dst_ip>127.0.0.1</live_stream_dst_ip>
+    <live_stream_dst_port>5004</live_stream_dst_port>
+    <live_stream_bitrate_kbps>500</live_stream_bitrate_kbps>
+    <live_stream_fps>12</live_stream_fps>
+    <live_stream_height>350</live_stream_height>
+    <live_stream_width>500</live_stream_width>
+
+    <src_csci_id>5</src_csci_id>
+    <dest_csci_id>1</dest_csci_id>
+    <src_unit_id>0</src_unit_id>
+    <dest_unit_id>2</dest_unit_id>
     <msg_id>3</msg_id>
 
+    <!-- Tracker -->
+    <tracker_config>/home/kunal/Projects/BSS/yolo-env/lib/python3.12/site-packages/ultralytics/cfg/trackers/bytetrack.yaml</tracker_config>
 
     <srs_values_of_classes>
         <PERSON>10</PERSON>

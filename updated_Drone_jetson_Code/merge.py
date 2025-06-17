@@ -1,7 +1,7 @@
 import time
 import threading
 import queue
-# import uuid
+import uuid
 from datetime import datetime
 import cv2
 import torch
@@ -11,15 +11,17 @@ import logging
 import struct
 import socket
 import subprocess
+from PIL import Image
+import sys
 
 # --- Configuration ---
-VIDEO_IN     = "0"
-VIDEO_OUT    = "/home/kunal/Projects/BSS/EdgeComputing/track.mp4"
-MODEL_PATH   = "/home/kunal/Projects/BSS/TrainedModels/03June2025/best.pt"
+VIDEO_IN     = "/dev/video0"
+VIDEO_OUT    = "/home/tank/Downloads/track.mp4"
+MODEL_PATH   = "/home/tank/PycharmProjects/TrainedModels/03June2025/best.pt"
 IMG_SIZE     = 640
 BATCH_SIZE   = 1
 MAX_FRAMES   = 16
-TRACKER_YAML = "/home/kunal/Projects/BSS/yolo-env/lib/python3.12/site-packages/ultralytics/cfg/trackers/bytetrack.yaml"
+TRACKER_YAML = "/usr/local/lib/python3.10/dist-packages/ultralytics/cfg/trackers/bytetrack.yaml"
 SKIP_FRAMES  = 3  # Number of frames to skip between inferences
 
 # Event & Summary settings
@@ -36,14 +38,14 @@ OBJECT_TYPE_MAPPING = {
 }
 
 # Summary UDP settings
-UDP_IP = "192.168.171.43"
+UDP_IP = "192.168.171.10"
 UDP_PORT = 5100
 
 class Cfg:
     SRC_CSCI_ID = 5
     DST_CSCI_ID = 1
     MSG_ID      = 3
-    SRC_UNIT_ID = 1
+    SRC_UNIT_ID = int(sys.argv[1])
     DST_UNIT_ID = 2
 
 class State:
@@ -62,14 +64,14 @@ last_summary_time = time.time()
 frame_counter     = 0
 
 # Output directory for saving frames (optional)
-OUT_DIR = "/home/kunal/Projects/BSS/EdgeComputing/Drone testing code/saved/"
+OUT_DIR = "/home/tank/Downloads/saved/"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 # Frame index for saved images
 frame_idx = 0
 
 # --- Logging setup ---
-LOG_FILE = "/home/kunal/Projects/BSS/EdgeComputing/Drone testing code/Tracker.log"
+LOG_FILE = "Tracker.log"
 logging.basicConfig(
     filename=LOG_FILE,
     filemode='a',
@@ -84,8 +86,8 @@ frame_q = queue.Queue(maxsize=MAX_FRAMES)
 draw_q  = queue.Queue(maxsize=MAX_FRAMES)
 
 # --- Video & Streaming setup ---
-width, height, fps = 1280, 720, 30
-bitrate_kbps      = 2000
+width, height, fps = 400,200, 10
+bitrate_kbps      = 450
 # Live stream destination
 dst_ip, dst_port  = "127.0.0.1", 5004
 
@@ -107,25 +109,25 @@ ffmpeg_cmd = [
 proc = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE)
 
 # Capture and file writer
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(VIDEO_IN, cv2.CAP_V4L2)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH,  width)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 cap.set(cv2.CAP_PROP_FPS, fps)
 
 fps   = cap.get(cv2.CAP_PROP_FPS) or fps
 W, H  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-writer = cv2.VideoWriter(VIDEO_OUT, fourcc, fps, (W, H))
+#fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+#writer = cv2.VideoWriter(VIDEO_OUT, fourcc, fps, (W, H))
 
 # --- Load YOLO model ---
 cuda_available = torch.cuda.is_available()
 device = "cuda" if cuda_available else "cpu"
-yolo = YOLO(MODEL_PATH).eval()
-
+yolo = YOLO(MODEL_PATH).to(device)
 yolo.fuse()
-
+yolo.half()
 if cuda_available:
-    # yolo.to(device)
+    #yolo.to(device)
+    #stream=None
     stream = torch.cuda.Stream(device=device)
     print(f"Using GPU on {device}")
 else:
@@ -228,25 +230,20 @@ def process_events(boxes):
     # Periodic Summary only if new entries in interval
     if now - last_summary_time >= SUMMARY_INTERVAL:
         if recent_entries:
-            try:
-                    
-                # Count per class
-                counts = {}
-                for tid in recent_entries:
-                    cls = active_tracks.get(tid, {}).get("class")
-                    if cls:
-                        counts[cls] = counts.get(cls, 0) + 1
-                objects_info = []
-                for cls_label, cnt in counts.items():
-                    objects_info.append({"class_label": cls_label, "count": cnt})
-                # Build and send message
-                msg_bytes = create_detected_object_message(state, objects_info)
-                sock.sendto(msg_bytes, (UDP_IP, UDP_PORT))
-                logger.info("Summary sent: %s", counts)
-                recent_entries.clear()
-            except :
-                pass
-            
+            # Count per class
+            counts = {}
+            for tid in recent_entries:
+                cls = active_tracks.get(tid, {}).get("class")
+                if cls:
+                    counts[cls] = counts.get(cls, 0) + 1
+            objects_info = []
+            for cls_label, cnt in counts.items():
+                objects_info.append({"class_label": cls_label, "count": cnt})
+            # Build and send message
+            msg_bytes = create_detected_object_message(state, objects_info)
+            sock.sendto(msg_bytes, (UDP_IP, UDP_PORT))
+            logger.info("Summary sent: %s", counts)
+            recent_entries.clear()
         last_summary_time = now
 
 # --- Threads ---
@@ -254,30 +251,34 @@ def reader():
     while True:
         ret, frame = cap.read()
         if not ret:
-            print("Error in reading the frame.")
             break
-        
-        proc.stdin.write(frame.tobytes())
-        frame_q.put(frame)
-        continue
-        # Bayer→RGB
-        gray = frame[:,:,0] if frame.ndim==3 else frame
-        rgb  = cv2.cvtColor(gray, cv2.COLOR_BAYER_GR2RGB)
-        # convert to BGR for streaming
-        bgr  = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-        # non-blocking send raw frame to FFmpeg
-        proc.stdin.write(rgb.tobytes())
+        rgb  = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        new_size = (width,height)
+        resized_rgb = cv2.resize(rgb, new_size, interpolation=cv2.INTER_LANCZOS4)
+        proc.stdin.write(resized_rgb.tobytes())
         # enqueue for inference/drawing
-        frame_q.put(rgb)
+        frame_q.put(resized_rgb)
+        #continue
+        
+        
+        # Bayer→RGB
+        #gray = frame[:,:,0] if frame.ndim==3 else frame
+        #rgb  = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # convert to BGR for streaming
+        #bgr  = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+        # non-blocking send raw frame to FFmpeg
+        #proc.stdin.write(rgb.tobytes())
+        # enqueue for inference/drawing
+        #frame_q.put(rgb)
     frame_q.put(None)
 
 def inferencer():
     global frame_counter
     stop = False
     raw_count = 0
-    cnt = 0
     while True:
-        item = frame_q.get()
+        rgb = frame_q.get()
+        item  = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
         if item is None:
             stop = True
         else:
@@ -310,16 +311,16 @@ def inferencer():
                 persist=True,
                 half=cuda_available,
                 verbose=False,
-                conf=.5
+                conf=.5,
+                #show=True
             )
             
         if cuda_available and stream:
             ctx.__exit__(None, None, None)
         frame_counter += 1
-        # print(results)
-        print("On frame: ",cnt)
-        cnt+=1
+        #print(results)
         for frame, res in zip(batch, results):
+           
             draw_q.put((frame, res))
             process_events(res.boxes)
         if stop:
@@ -349,7 +350,7 @@ def drawer():
                     2
                 )
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
-        # timestamp="img0"
+        #timestamp="img0"
         filename = f"{timestamp}.jpg"
         out_path = os.path.join(OUT_DIR, filename)
 
@@ -367,6 +368,6 @@ if __name__ == "__main__":
     t_read.join(); t_inf.join(); t_draw.join()
     # cleanup streaming
     proc.stdin.close(); proc.wait()
-    writer.release(); sock.close()
+    #writer.release(); sock.close()
     print("Processing complete.")
 
