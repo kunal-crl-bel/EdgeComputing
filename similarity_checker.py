@@ -17,7 +17,7 @@ class SimilarityChecker:
         temp_map = self.db.hash_value_map.copy()  # Avoid modifying while iterating
         for item in temp_map:
             try:
-                diff = hash_val - self.db.hash_value_map[item] 
+                diff = hash_val - temp_map[item] 
                 """do we need to calculate the abs difference?"""
                 if diff < self.threshold:
                     del temp_map

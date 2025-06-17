@@ -43,7 +43,7 @@ class VideoStream:
                 ret, frame = cap.read()
                 if not ret:
                     logging.warning("Stream ended or read error; stopping")
-                    break
+                    break 
 
                 # block if queue is full, but wake up to check `stopped`
                 while not self.stopped.is_set():
