@@ -1,4 +1,4 @@
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 import imagehash
 from pathlib import Path
 from db_manager import DBManager
@@ -73,6 +73,7 @@ class SimilarityChecker:
             good = [m for m,n in matches if m.distance < 0.75 * n.distance]
             if len(good) >= self.min_good_matches:
                 # we found enough good matches → it’s not new
+                print(stored_id)
                 return False, str(stored_id)
 
         # if we get here, it’s new: save its descriptors
@@ -85,37 +86,3 @@ class SimilarityChecker:
             self.db.add_image(crop_img, id_hash=new_id)
 
         return True, new_id
-    
-    
-    def _save_mosaic(self, img1: Image.Image, img2: Image.Image | None, compared_file: str, hash1, hash2, diff, match: bool):
-        self.mosaic_dir.mkdir(exist_ok=True)
-        
-        # Resize both images to same size for display
-        img1 = img1.resize((256, 256))
-        img2 = img2.resize((256, 256)) if img2 else Image.new("RGB", (256, 256), color="gray")
-
-        # Combine images side by side
-        combined = Image.new("RGB", (512, 256))
-        combined.paste(img1, (0, 0))
-        combined.paste(img2, (256, 0))
-
-        # Draw result text
-        draw = ImageDraw.Draw(combined)
-        try:
-            font = ImageFont.truetype("arial.ttf", 14)
-        except:
-            font = ImageFont.load_default()
-
-        status = "MATCH" if match else "NO MATCH"
-        draw.text((10, 230), f"New Hash: {hash1}", fill="white", font=font)
-        if hash2:
-            draw.text((10, 245), f"Compared Hash: {hash2} (diff={diff})", fill="white", font=font)
-        else:
-            draw.text((10, 245), f"Difference={diff})", fill="white", font=font)
-            
-        draw.text((260, 230), f"Status: {status}", fill="white", font=font)
-        draw.text((260, 245), f"Compared: {compared_file}", fill="white", font=font)
-
-        # Save mosaic image
-        out_path = self.mosaic_dir / f"mosaic_{hash1}_{'match' if match else 'new'}.jpg"
-        combined.save(out_path)
