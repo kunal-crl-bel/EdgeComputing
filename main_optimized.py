@@ -79,12 +79,11 @@ def detection_worker(cfg, model, stream, detection_queue, device):
         frame = stream.read()
         if frame is None:
             continue
-
-        # Run inference + tracking (results is a generator when stream=True)
+        
+        # track
         with torch.amp.autocast('cuda',enabled=True):
-            results_gen = model.track(
+            results = model.track(
                 source=frame,
-                # stream=True,
                 device=device,
                 imgsz=int(cfg.get('imgsz', 640)),
                 conf=float(cfg.get('detect_confidence', 0.25)),
@@ -92,10 +91,8 @@ def detection_worker(cfg, model, stream, detection_queue, device):
                 verbose=False,
             )[0]
 
-        # Iterate generator (usually yields one result per frame)
-        # for res in results_gen:
-            # Annotate and store frame
-        res = results_gen
+
+        res = results
         annotated_frame = res.plot()
         frame_map[frame_id] = annotated_frame
 
@@ -145,7 +142,7 @@ def similarity_worker(cfg, detection_queue, notify_queue, sim_checker):
     while True:
         try:
             tid, crop, class_id, frame_id = detection_queue.get(timeout=1)
-            is_new, hash_value = sim_checker.is_new(Image.fromarray(crop))
+            is_new, hash_value = sim_checker.is_new_shift(Image.fromarray(crop))
             if is_new:
                 notify_queue.put((
                         tid, 
@@ -177,7 +174,6 @@ def notifier_worker(cfg, notify_queue, db, notifier):
     while True:
         try:
             tid, hash_value, crop, class_id, frame_id = notify_queue.get(timeout=1)
-            db.add_image(Image.fromarray(crop), id_hash=hash_value)
             srs_code = get_srs_code(class_id)
             notifier.add(srs_code, 1)
             reported_ids.add(tid)
@@ -188,32 +184,6 @@ def notifier_worker(cfg, notify_queue, db, notifier):
         except queue.Empty:
             time.sleep(0.1)  # Avoid busy waiting
             continue
-
-# import subprocess
-# cfg = load_config("config.xml")
-
-# width = cfg['live_stream_width']
-# height = cfg['live_stream_height']
-# fps = cfg['live_stream_fps']
-# bitrate_kbps = cfg['live_stream_bitrate_kbps']
-# dst_ip = cfg['live_stream_dst_ip']
-# dst_port = cfg['live_stream_dst_port']
-
-# ffmpeg_cmd = [
-#     "ffmpeg",
-#     "-f", "rawvideo",
-#     "-pixel_format", "rgb24",
-#     "-video_size", f"{width}x{height}",
-#     "-framerate", str(fps),
-#     "-i", "-",                 # stdin
-#     "-c:v", "libx264",
-#     "-preset", "ultrafast",
-#     "-tune", "zerolatency",
-#     "-b:v", f"{bitrate_kbps}k",
-#     "-f", "mpegts",
-#     f"udp://{dst_ip}:{dst_port}"
-# ]
-# proc = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE)
 
 def main():
     """
@@ -250,7 +220,7 @@ def main():
     
     db = DBManager(cfg['db_dir'], cfg['max_db_size_mb'])
     
-    sim_checker = SimilarityChecker(db, cfg['similarity_threshold'])
+    sim_checker = SimilarityChecker(db, cfg['similarity_threshold'],cfg)
     
     notifier = Notifier(cfg, sys.argv[1] if len(sys.argv)>1 else None)
 

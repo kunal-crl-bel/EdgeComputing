@@ -20,8 +20,8 @@ class VideoStream:
         self.q = queue.Queue(maxsize=queue_size)
         self.stopped = threading.Event()
         self.thread = None
-        self.live_streamer = VideoLiveStream(cfg)
-        self.live_streamer.start_live_stream()
+        # self.live_streamer = VideoLiveStream(cfg)
+        # self.live_streamer.start_live_stream()
 
     def start(self):
         if self.thread is None:
@@ -53,7 +53,7 @@ class VideoStream:
                 while not self.stopped.is_set():
                     try:
                         self.q.put(frame, timeout=0.1)
-                        self.live_streamer.write(frame)
+                        # self.live_streamer.write(frame)
                         break
                     except queue.Full:
                         continue

@@ -24,6 +24,7 @@ def load_config(config_path: str) -> dict:
 
     # Convert to proper types where applicable
     converters = {
+        'mode': str,
         'video_source': str,
         'model_path': str,
         'detect_confidence': float,

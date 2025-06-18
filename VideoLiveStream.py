@@ -29,9 +29,15 @@ class VideoLiveStream:
         
     
     def start_live_stream(self):
-        self.proc = subprocess.Popen(self.ffmpeg_cmd, stdin=subprocess.PIPE)
+        self.proc = subprocess.Popen(
+            self.ffmpeg_cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL  # suppress normal output
+            # stdout=subprocess.DEVNULL if not self.cfg.get('debug', False) else None,
+            # stderr=subprocess.DEVNULL if not self.cfg.get('debug', False) else None
+        )
         return self
-        # pass
+
     
     def write(self,frame):
         # frame.resize(())

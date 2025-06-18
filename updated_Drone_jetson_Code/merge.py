@@ -15,14 +15,16 @@ from PIL import Image
 import sys
 
 # --- Configuration ---
-VIDEO_IN     = "/dev/video0"
-VIDEO_OUT    = "/home/tank/Downloads/track.mp4"
-MODEL_PATH   = "/home/tank/PycharmProjects/TrainedModels/03June2025/best.pt"
+VIDEO_IN     = '/dev/video2'
+VIDEO_OUT    = "/home/kunal/Downloads/track.mp4"
+MODEL_PATH   = "/home/kunal/Projects/BSS/TrainedModels/03June2025/best.pt"
 IMG_SIZE     = 640
 BATCH_SIZE   = 1
 MAX_FRAMES   = 16
-TRACKER_YAML = "/usr/local/lib/python3.10/dist-packages/ultralytics/cfg/trackers/bytetrack.yaml"
+TRACKER_YAML = "/home/kunal/Projects/BSS/yolo-env/lib/python3.12/site-packages/ultralytics/cfg/trackers/bytetrack.yaml"
 SKIP_FRAMES  = 3  # Number of frames to skip between inferences
+total_tracking_frame_count = 10
+REENTRY_WINDOW = 2 
 
 # Event & Summary settings
 SUMMARY_INTERVAL    = 5.0   # seconds between summaries
@@ -38,7 +40,7 @@ OBJECT_TYPE_MAPPING = {
 }
 
 # Summary UDP settings
-UDP_IP = "192.168.171.10"
+UDP_IP = "127.0.0.1"
 UDP_PORT = 5100
 
 class Cfg:
@@ -64,7 +66,7 @@ last_summary_time = time.time()
 frame_counter     = 0
 
 # Output directory for saving frames (optional)
-OUT_DIR = "/home/tank/Downloads/saved/"
+OUT_DIR = "/home/kunal/Downloads/saved/"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 # Frame index for saved images

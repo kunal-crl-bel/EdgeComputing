@@ -1,6 +1,5 @@
 from pathlib import Path
 from PIL import Image
-from queue import Queue
 
 
 class DBManager:
@@ -9,6 +8,7 @@ class DBManager:
         self.db_dir.mkdir(parents=True, exist_ok=True)
         self.max_size = max_size_mb * 1024 * 1024
         self.hash_value_map = dict()
+        self.descriptor_map = dict()
 
     def add_image(self, crop_img: Image.Image, id_hash: str) -> None:
         file_path = self.db_dir / f"{id_hash}.jpg"

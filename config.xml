@@ -1,4 +1,6 @@
 <config>
+    <!-- Mode, production/debugging/development -->
+    <mode>debug</mode>
     <!-- For video Input -->
     <video_source>/dev/video0</video_source>
 
