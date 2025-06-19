@@ -26,8 +26,12 @@ def load_config(config_path: str) -> dict:
     converters = {
         'mode': str,
         'video_source': str,
+        'fps':int,
+        
         'model_path': str,
         'detect_confidence': float,
+        'detection_interval':int,
+        
         'db_dir': str,
         'max_db_size_mb': float,
         'similarity_threshold': float,

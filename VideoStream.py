@@ -20,6 +20,7 @@ class VideoStream:
         self.q = queue.Queue(maxsize=queue_size)
         self.stopped = threading.Event()
         self.thread = None
+        self.cfg = cfg
         # self.live_streamer = VideoLiveStream(cfg)
         # self.live_streamer.start_live_stream()
 
@@ -32,10 +33,11 @@ class VideoStream:
 
     def _worker(self):
         try:
-            cap = cv2.VideoCapture(0)
+            cap = cv2.VideoCapture('/dev/video0')
             # cap = cv2.VideoCapture(self.src, cv2.CAP_FFMPEG)
             if not cap.isOpened():
                 raise RuntimeError(f"Cannot open video source: {self.src}")
+            cap.set(cv2.CAP_PROP_FPS, self.cfg.get('fps',10))
             logging.info(f"Opened video source {self.src}")
         except Exception:
             logging.exception("Failed to open VideoCapture")

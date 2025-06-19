@@ -75,56 +75,72 @@ def detection_worker(cfg, model, stream, detection_queue, device):
     frame_id = 0
     global frame_map
     
+    frame_count = 0
+    is_alive = dict()
+    
     while stream.more():
         frame = stream.read()
         if frame is None:
             continue
+
+        if frame_count % cfg.get('fps', 12) == 0:
+            frame_count = 0
+            print('I am alive: ',is_alive)
+            is_alive.clear()
+        frame_count += 1
         
-        # track
-        with torch.amp.autocast('cuda',enabled=True):
-            results = model.track(
+           
+            
+        # Track using YOLO
+        with torch.amp.autocast('cuda', enabled=(device == 'cuda')):
+            results_gen = model.track(
                 source=frame,
                 device=device,
+                show=False,
+                stream=True,
                 imgsz=int(cfg.get('imgsz', 640)),
                 conf=float(cfg.get('detect_confidence', 0.25)),
                 tracker=cfg.get('tracker_config', 'bytetrack.yaml'),
                 verbose=False,
-            )[0]
+            )
 
-
-        res = results
-        annotated_frame = res.plot()
-        frame_map[frame_id] = annotated_frame
-
-        # Process detections
-        h, w = frame.shape[:2]
-        for box in res.boxes:
-            tid = int(getattr(box, 'id', -1))
-            class_id = int(getattr(box, 'cls', -1))
-            
-            if class_id not in CLASS_ID_TO_SRS:
+        for res in results_gen:
+            if res is None:
                 continue
 
-            # Skip if already reported
-            if tid in reported_ids:
-                continue
+            annotated_frame = res.plot()
+            frame_map[frame_id] = annotated_frame
 
-            # Extract and clamp bounding box
-            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-            x1, y1 = max(0, x1), max(0, y1)
-            x2, y2 = min(w, x2), min(h, y2)
+            h, w = frame.shape[:2]
+            # curr = set()
+            for box in res.boxes:
+                tid = int(getattr(box, 'id', -1))
+                class_id = int(getattr(box, 'cls', -1))
 
-            # Ignore tiny boxes
-            if x2 - x1 < 5 or y2 - y1 < 5:
-                continue
+                if class_id not in CLASS_ID_TO_SRS:
+                    continue
+                    
+                is_alive[tid] = is_alive.get(tid,0) + 1
+                if is_alive.get(tid,0) < cfg.get('detection_interval',12):
+                    continue
+                
+                # if tid in reported_ids:
+                #     continue
 
-            # Crop and enqueue
-            crop = frame[y1:y2, x1:x2]
-            detection_queue.put((tid, crop, class_id, frame_id))
-            last_seen[tid] = time.time()
+                # Extract and clamp bounding box
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                x1, y1 = max(0, x1), max(0, y1)
+                x2, y2 = min(w, x2), min(h, y2)
+
+                if x2 - x1 < 5 or y2 - y1 < 5:
+                    continue
+
+                crop = frame[y1:y2, x1:x2]
+                detection_queue.put((tid, crop, class_id, frame_id))
+                last_seen[tid] = time.time()
 
         frame_id += 1
-
+        
     print("[Detection] Finished")
 
 
@@ -142,7 +158,7 @@ def similarity_worker(cfg, detection_queue, notify_queue, sim_checker):
     while True:
         try:
             tid, crop, class_id, frame_id = detection_queue.get(timeout=1)
-            is_new, hash_value = sim_checker.is_new_shift(Image.fromarray(crop))
+            is_new, hash_value = sim_checker.is_new_sift(Image.fromarray(crop))
             if is_new:
                 notify_queue.put((
                         tid, 

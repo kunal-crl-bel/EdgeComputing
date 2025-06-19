@@ -3,12 +3,14 @@
     <mode>debug</mode>
     <!-- For video Input -->
     <video_source>/dev/video0</video_source>
+    <fps>12</fps>
 
     <!-- Model Path -->
     <model_path>/home/kunal/Projects/BSS/TrainedModels/03June2025/best.pt</model_path>
 
     <!-- Detection Threshould -->
     <detect_confidence>0.5</detect_confidence>
+    <detection_interval>7</detection_interval>
 
     <!-- Image Similarity -->
     <db_dir>./images/crop_db</db_dir>

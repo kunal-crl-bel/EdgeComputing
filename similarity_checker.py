@@ -13,7 +13,7 @@ class SimilarityChecker:
         self.mosaic_dir = Path("images/mosaic_results")
         
         # create one SIFT detector for all calls
-        self.sift = cv2.SIFT_create()
+        self.sift = cv2.SIFT_create(nfeatures=2000)
         # Create BFMatcher with default params (L2 norm for SIFT)
         self.matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
         # how many good matches constitute “the same” image
@@ -55,7 +55,7 @@ class SimilarityChecker:
         keypoints, descriptors = self.sift.detectAndCompute(cv_img, None)
         return descriptors
 
-    def is_new_shift(self, crop_img: Image.Image) -> tuple[bool, str | None]:
+    def is_new_sift(self, crop_img: Image.Image) -> tuple[bool, str | None]:
         # compute descriptors for the incoming crop
         des = self._compute_descriptors(crop_img)
         if des is None:
@@ -70,10 +70,17 @@ class SimilarityChecker:
                 continue
             # for each stored descriptor set, run knnMatch and apply Lowe’s ratio test
             matches = self.matcher.knnMatch(des, stored_des, k=2)
-            good = [m for m,n in matches if m.distance < 0.75 * n.distance]
+            if len(matches)<1:
+                break
+            try:
+                good = [m for m,n in matches if m.distance < 0.95 * n.distance]
+            except Exception as e:
+                print(f"Error during matching for {stored_id}: {e}")
+                print(matches)
+                continue
             if len(good) >= self.min_good_matches:
                 # we found enough good matches → it’s not new
-                print(stored_id)
+                print('Found with stored ID: ',stored_id)
                 return False, str(stored_id)
 
         # if we get here, it’s new: save its descriptors
@@ -81,7 +88,7 @@ class SimilarityChecker:
         self.db.descriptor_map[new_id] = des
 
         # optionally store the image for debugging (as before)
-        print(f"New image hash: {new_id}", " mode:", self.cfg.get('mode',''))
+        print(f"New image SIFT match found! New id: {new_id}", " mode:", self.cfg.get('mode',''))
         if self.cfg.get('mode','') != 'production':
             self.db.add_image(crop_img, id_hash=new_id)
 
